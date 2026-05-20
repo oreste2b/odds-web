@@ -6,6 +6,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 type Service = {
   id: string;
+  index: string;
   label: string;
   title: string;
   description: string;
@@ -15,6 +16,7 @@ type Service = {
 const SERVICES: ReadonlyArray<Service> = [
   {
     id: "strategy",
+    index: "01",
     label: "Strategy",
     title: "Strategy & Positioning",
     description:
@@ -23,6 +25,7 @@ const SERVICES: ReadonlyArray<Service> = [
   },
   {
     id: "brand",
+    index: "02",
     label: "Brand",
     title: "Brand Systems",
     description:
@@ -31,6 +34,7 @@ const SERVICES: ReadonlyArray<Service> = [
   },
   {
     id: "product",
+    index: "03",
     label: "Product",
     title: "Product & Interface",
     description:
@@ -39,6 +43,7 @@ const SERVICES: ReadonlyArray<Service> = [
   },
   {
     id: "content",
+    index: "04",
     label: "Content",
     title: "Content & Story",
     description:
@@ -47,6 +52,7 @@ const SERVICES: ReadonlyArray<Service> = [
   },
   {
     id: "growth",
+    index: "05",
     label: "Growth",
     title: "Performance & Growth",
     description:
@@ -55,6 +61,7 @@ const SERVICES: ReadonlyArray<Service> = [
   },
   {
     id: "ai",
+    index: "06",
     label: "AI",
     title: "AI & Automation",
     description:
@@ -65,180 +72,219 @@ const SERVICES: ReadonlyArray<Service> = [
 
 export default function ServicesWheel(): React.JSX.Element {
   const sectionRef = useRef<HTMLElement | null>(null);
-  const wheelRef = useRef<HTMLDivElement | null>(null);
+  const stickyRef = useRef<HTMLDivElement | null>(null);
+  const rowRefs = useRef<Array<HTMLLIElement | null>>([]);
+  const indexBigRef = useRef<HTMLDivElement | null>(null);
+  const titleRef = useRef<HTMLHeadingElement | null>(null);
+  const descRef = useRef<HTMLParagraphElement | null>(null);
+  const listRef = useRef<HTMLUListElement | null>(null);
   const [active, setActive] = useState<number>(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const section = sectionRef.current;
-    const wheel = wheelRef.current;
-    if (!section || !wheel) return;
+    if (!section) return;
 
     gsap.registerPlugin(ScrollTrigger);
 
-    if (prefersReducedMotion) {
-      gsap.set(wheel, { rotation: 0 });
-      return;
-    }
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        wheel,
-        { rotation: -45 },
-        {
-          rotation: 45,
-          ease: "none",
-          scrollTrigger: {
-            trigger: section,
-            start: "top 80%",
-            end: "bottom 20%",
-            scrub: 1,
-          },
-        }
-      );
-    }, section);
+    const triggers: ScrollTrigger[] = [];
 
-    return () => ctx.revert();
+    rowRefs.current.forEach((el, idx) => {
+      if (!el) return;
+      const trigger = ScrollTrigger.create({
+        trigger: el,
+        start: "top 55%",
+        end: "bottom 45%",
+        onEnter: () => setActive(idx),
+        onEnterBack: () => setActive(idx),
+      });
+      triggers.push(trigger);
+
+      if (!prefersReducedMotion) {
+        gsap.fromTo(
+          el,
+          { opacity: 0.35, y: 24 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.8,
+            ease: "power2.out",
+            scrollTrigger: {
+              trigger: el,
+              start: "top 85%",
+              end: "top 50%",
+              scrub: 0.5,
+            },
+          }
+        );
+      }
+    });
+
+    return () => {
+      triggers.forEach((t) => t.kill());
+    };
   }, []);
 
-  const radius = 220;
-  const center = 280;
+  useEffect(() => {
+    const prefersReducedMotion =
+      typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const targets: Array<HTMLElement | null> = [
+      indexBigRef.current,
+      titleRef.current,
+      descRef.current,
+      listRef.current,
+    ];
+
+    targets.forEach((node) => {
+      if (!node) return;
+      if (prefersReducedMotion) {
+        gsap.set(node, { opacity: 1, y: 0 });
+        return;
+      }
+      gsap.fromTo(
+        node,
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power2.out", overwrite: true }
+      );
+    });
+  }, [active]);
+
   const activeService = SERVICES[active] ?? SERVICES[0];
 
   return (
     <section
+      id="services"
       ref={sectionRef}
-      className="relative w-full overflow-hidden bg-surfaceTint py-24 md:py-32"
+      className="relative w-full bg-surfaceTint py-28 md:py-40"
       aria-label="Services"
     >
       <div className="absolute left-6 top-6 text-xs uppercase tracking-[0.3em] text-mutedInk md:left-12 md:top-12">
         Services — 003
       </div>
 
-      <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 items-center gap-12 px-6 md:grid-cols-2 md:px-12">
-        <div className="relative flex items-center justify-center">
-          <div
-            ref={wheelRef}
-            className="relative"
-            style={{ width: center * 2, height: center * 2, maxWidth: "100%", aspectRatio: "1 / 1" }}
-          >
-            <svg
-              viewBox={`0 0 ${center * 2} ${center * 2}`}
-              className="absolute inset-0 h-full w-full"
-              aria-hidden="true"
-            >
-              <circle
-                cx={center}
-                cy={center}
-                r={radius}
-                fill="none"
-                stroke="var(--color-primary-accent)"
-                strokeOpacity="0.18"
-                strokeWidth="1"
-              />
-              <circle
-                cx={center}
-                cy={center}
-                r={radius - 40}
-                fill="none"
-                stroke="var(--color-primary-accent)"
-                strokeOpacity="0.08"
-                strokeWidth="1"
-                strokeDasharray="2 8"
-              />
-            </svg>
-
-            {SERVICES.map((service, idx) => {
-              const angle = (360 / SERVICES.length) * idx - 90;
-              const rad = (angle * Math.PI) / 180;
-              const x = center + radius * Math.cos(rad);
-              const y = center + radius * Math.sin(rad);
-              const isActive = idx === active;
-
-              return (
-                <button
-                  key={service.id}
-                  type="button"
-                  onClick={() => setActive(idx)}
-                  className="absolute flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-center transition-colors duration-300"
-                  style={{
-                    left: x,
-                    top: y,
-                    borderColor: isActive ? "var(--color-primary-accent)" : "rgba(17,19,21,0.15)",
-                    backgroundColor: isActive ? "var(--color-primary-accent)" : "var(--color-surface-tint)",
-                    color: isActive ? "var(--color-surface-tint)" : "var(--color-ink)",
-                  }}
-                  aria-pressed={isActive}
-                  aria-label={`Show details for ${service.label}`}
-                >
-                  <span className="font-display text-xs uppercase tracking-[0.15em]">
-                    {service.label}
-                  </span>
-                </button>
-              );
-            })}
-
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-              <div className="font-body text-[10px] uppercase tracking-[0.4em] text-mutedInk">
-                Odds
-              </div>
-              <div className="font-display mt-1 text-2xl text-ink">Services</div>
-            </div>
-          </div>
+      <div className="mx-auto w-full max-w-[1400px] px-6 md:px-12">
+        <div className="mb-20 grid grid-cols-1 items-end gap-6 md:grid-cols-2">
+          <h2 className="font-display text-5xl leading-[0.95] text-ink md:text-7xl">
+            What we do.
+          </h2>
+          <p className="font-body max-w-[480px] text-base leading-relaxed text-mutedInk md:justify-self-end md:text-right">
+            Six disciplines, one operating model. We plug in as a senior team
+            across strategy, brand, product, content, growth and AI — and stay
+            until the work is compounding.
+          </p>
         </div>
 
-        <div className="relative min-h-[320px]">
-          <ServicePanel service={activeService} />
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-12 md:gap-16">
+          <aside className="md:col-span-5">
+            <div
+              ref={stickyRef}
+              className="md:sticky md:top-28"
+            >
+              <div
+                ref={indexBigRef}
+                className="font-display select-none text-[18vw] leading-[0.85] text-ink/90 md:text-[10vw]"
+                style={{ letterSpacing: "-0.06em" }}
+              >
+                {activeService.index}
+              </div>
+
+              <div className="mt-6 h-px w-24" style={{ backgroundColor: "var(--color-primary-accent)" }} />
+
+              <h3
+                ref={titleRef}
+                className="font-display mt-6 text-3xl text-ink md:text-5xl"
+              >
+                {activeService.title}
+              </h3>
+
+              <p
+                ref={descRef}
+                className="font-body mt-5 max-w-[420px] text-base leading-relaxed text-mutedInk"
+              >
+                {activeService.description}
+              </p>
+
+              <ul ref={listRef} className="mt-8 space-y-3">
+                {activeService.deliverables.map((item) => (
+                  <li
+                    key={item}
+                    className="font-body flex items-center gap-3 text-sm text-ink"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="inline-block h-px w-6"
+                      style={{ backgroundColor: "var(--color-primary-accent)" }}
+                    />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </aside>
+
+          <ol className="md:col-span-7">
+            {SERVICES.map((service, idx) => {
+              const isActive = idx === active;
+              return (
+                <li
+                  key={service.id}
+                  ref={(el) => {
+                    rowRefs.current[idx] = el;
+                  }}
+                  className="group relative flex min-h-[44vh] flex-col justify-center border-t border-ink/10 py-10 transition-colors duration-500"
+                  style={{
+                    borderTopColor: isActive
+                      ? "var(--color-primary-accent)"
+                      : "rgba(17,19,21,0.10)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActive(idx)}
+                    className="text-left"
+                    aria-pressed={isActive}
+                  >
+                    <div className="flex items-baseline gap-6">
+                      <span
+                        className="font-body text-xs uppercase tracking-[0.3em] transition-colors duration-500"
+                        style={{
+                          color: isActive
+                            ? "var(--color-primary-accent)"
+                            : "var(--color-muted-ink)",
+                        }}
+                      >
+                        {service.index}
+                      </span>
+                      <h4
+                        className="font-display text-4xl leading-[1.0] transition-colors duration-500 md:text-6xl"
+                        style={{
+                          color: isActive ? "var(--color-ink)" : "rgba(17,19,21,0.45)",
+                        }}
+                      >
+                        {service.label}
+                      </h4>
+                    </div>
+
+                    <div
+                      className="font-body mt-4 max-w-[480px] overflow-hidden text-sm leading-relaxed text-mutedInk transition-all duration-500"
+                      style={{
+                        maxHeight: isActive ? "200px" : "0px",
+                        opacity: isActive ? 1 : 0,
+                      }}
+                    >
+                      <p className="pt-2">{service.description}</p>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+            <li className="border-t border-ink/10" aria-hidden="true" />
+          </ol>
         </div>
       </div>
     </section>
-  );
-}
-
-type ServicePanelProps = {
-  service: Service;
-};
-
-function ServicePanel({ service }: ServicePanelProps): React.JSX.Element {
-  const panelRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const node = panelRef.current;
-    if (!node) return;
-    const prefersReducedMotion =
-      typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReducedMotion) {
-      gsap.set(node, { opacity: 1, y: 0 });
-      return;
-    }
-    gsap.fromTo(
-      node,
-      { opacity: 0, y: 12 },
-      { opacity: 1, y: 0, duration: 0.45, ease: "power2.out", overwrite: true }
-    );
-  }, [service.id]);
-
-  return (
-    <div ref={panelRef} className="rounded-2xl border border-ink/10 bg-white/40 p-8 backdrop-blur-sm">
-      <div className="font-body text-xs uppercase tracking-[0.3em] text-primaryAccent" style={{ color: "var(--color-primary-accent)" }}>
-        {service.label}
-      </div>
-      <h3 className="font-display mt-4 text-3xl text-ink md:text-4xl">{service.title}</h3>
-      <p className="font-body mt-4 text-base leading-relaxed text-mutedInk">{service.description}</p>
-      <ul className="font-body mt-6 space-y-2 text-sm text-ink">
-        {service.deliverables.map((item) => (
-          <li key={item} className="flex items-center gap-3">
-            <span
-              className="inline-block h-1 w-6"
-              style={{ backgroundColor: "var(--color-primary-accent)" }}
-              aria-hidden="true"
-            />
-            {item}
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
