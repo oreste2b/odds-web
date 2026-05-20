@@ -13,10 +13,12 @@ const PHRASES: ReadonlyArray<string> = [
 ];
 
 const VIDEO_SRC =
-  "https://videos.pexels.com/video-files/3209828/3209828-hd_1920_1080_25fps.mp4";
+  "https://videos.pexels.com/video-files/3209828/3209828-hd_1280_720_25fps.mp4";
 
 const VIDEO_POSTER =
   "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&w=2000&q=80";
+
+type VideoWithFastSeek = HTMLVideoElement & { fastSeek?: (time: number) => void };
 
 export default function Manifesto(): React.JSX.Element {
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -28,7 +30,7 @@ export default function Manifesto(): React.JSX.Element {
 
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const section = sectionRef.current;
-    const video = videoRef.current;
+    const video = videoRef.current as VideoWithFastSeek | null;
     if (!section) return;
 
     gsap.registerPlugin(ScrollTrigger);
@@ -37,13 +39,11 @@ export default function Manifesto(): React.JSX.Element {
       phraseRefs.current.forEach((el) => {
         if (el) gsap.set(el, { opacity: 1, scale: 1 });
       });
-      if (video) {
-        video.removeAttribute("autoplay");
-      }
       return;
     }
 
     const splits: SplitType[] = [];
+    const cleanups: Array<() => void> = [];
 
     const ctx = gsap.context(() => {
       phraseRefs.current.forEach((el) => {
@@ -55,7 +55,7 @@ export default function Manifesto(): React.JSX.Element {
       });
 
       const total = PHRASES.length;
-      const endDistance = window.innerHeight * total;
+      const endDistance = window.innerHeight * 3;
 
       const pinTrigger = ScrollTrigger.create({
         trigger: section,
@@ -68,31 +68,67 @@ export default function Manifesto(): React.JSX.Element {
       });
 
       if (video) {
-        const videoTween = gsap.to(video, {
-          currentTime: 0.1,
+        const proxy = { t: 0 };
+        let lastApplied = -1;
+        let pendingFrame = 0;
+
+        const applyTime = (): void => {
+          pendingFrame = 0;
+          const next = proxy.t;
+          if (Math.abs(next - lastApplied) < 0.033) return;
+          lastApplied = next;
+          try {
+            if (typeof video.fastSeek === "function") {
+              video.fastSeek(next);
+            } else {
+              video.currentTime = next;
+            }
+          } catch {
+            // Ignore seek errors during transitions
+          }
+        };
+
+        const scheduleApply = (): void => {
+          if (pendingFrame !== 0) return;
+          pendingFrame = window.requestAnimationFrame(applyTime);
+        };
+
+        const videoTween = gsap.to(proxy, {
+          t: 0.1,
           ease: "none",
           scrollTrigger: {
             trigger: section,
             start: "top top",
             end: () => `+=${endDistance}`,
-            scrub: 0.4,
+            scrub: 0.6,
             invalidateOnRefresh: true,
           },
+          onUpdate: scheduleApply,
         });
 
-        const updateDuration = (): void => {
+        const bindDuration = (): void => {
           if (!Number.isFinite(video.duration) || video.duration <= 0) return;
-          videoTween.vars.currentTime = video.duration - 0.05;
+          videoTween.vars.t = Math.max(0, video.duration - 0.05);
           videoTween.invalidate();
           ScrollTrigger.refresh();
         };
 
-        if (video.readyState >= 1) {
-          updateDuration();
+        const handleReady = (): void => {
+          bindDuration();
+        };
+
+        if (video.readyState >= 3) {
+          handleReady();
         } else {
-          video.addEventListener("loadedmetadata", updateDuration, { once: true });
+          video.addEventListener("canplaythrough", handleReady, { once: true });
+          video.addEventListener("loadedmetadata", bindDuration, { once: true });
         }
-        video.addEventListener("durationchange", updateDuration);
+
+        cleanups.push(() => {
+          video.removeEventListener("canplaythrough", handleReady);
+          video.removeEventListener("loadedmetadata", bindDuration);
+          if (pendingFrame !== 0) window.cancelAnimationFrame(pendingFrame);
+        });
       }
 
       phraseRefs.current.forEach((el, idx) => {
@@ -157,12 +193,11 @@ export default function Manifesto(): React.JSX.Element {
         });
       });
 
-      return () => {
-        pinTrigger.kill();
-      };
+      cleanups.push(() => pinTrigger.kill());
     }, section);
 
     return () => {
+      cleanups.forEach((fn) => fn());
       ctx.revert();
       splits.forEach((s) => s.revert());
     };
@@ -182,7 +217,9 @@ export default function Manifesto(): React.JSX.Element {
         muted
         playsInline
         preload="auto"
+        disablePictureInPicture
         aria-hidden="true"
+        style={{ willChange: "transform", transform: "translateZ(0)" }}
       />
 
       <div
