@@ -13,7 +13,7 @@ const PHRASES: ReadonlyArray<string> = [
 ];
 
 const VIDEO_SRC =
-  "https://videos.pexels.com/video-files/3209828/3209828-hd_1280_720_25fps.mp4";
+  "https://videos.pexels.com/video-files/3209828/3209828-hd_1920_1080_25fps.mp4";
 
 const VIDEO_POSTER =
   "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&w=2000&q=80";
@@ -55,7 +55,7 @@ export default function Manifesto(): React.JSX.Element {
       });
 
       const total = PHRASES.length;
-      const endDistance = window.innerHeight * 3;
+      const endDistance = window.innerHeight * total;
 
       const pinTrigger = ScrollTrigger.create({
         trigger: section,
@@ -68,66 +68,101 @@ export default function Manifesto(): React.JSX.Element {
       });
 
       if (video) {
-        const proxy = { t: 0 };
-        let lastApplied = -1;
-        let pendingFrame = 0;
+        let duration = 0;
+        let progress = 0;
+        let targetTime = 0;
+        let rafId = 0;
+        let lastSeekAt = 0;
 
-        const applyTime = (): void => {
-          pendingFrame = 0;
-          const next = proxy.t;
-          if (Math.abs(next - lastApplied) < 0.033) return;
-          lastApplied = next;
-          try {
-            if (typeof video.fastSeek === "function") {
-              video.fastSeek(next);
-            } else {
-              video.currentTime = next;
-            }
-          } catch {
-            // Ignore seek errors during transitions
+        const computeMarkers = (): ReadonlyArray<number> => {
+          const stops: number[] = [];
+          for (let i = 0; i <= total; i++) {
+            stops.push((i / total) * duration);
           }
+          return stops;
         };
 
-        const scheduleApply = (): void => {
-          if (pendingFrame !== 0) return;
-          pendingFrame = window.requestAnimationFrame(applyTime);
+        const updateTargetFromProgress = (): void => {
+          if (duration <= 0) return;
+          const markers = computeMarkers();
+          const scaled = progress * total;
+          const segmentIdx = Math.min(total - 1, Math.floor(scaled));
+          const segmentLocal = Math.min(1, scaled - segmentIdx);
+          const a = markers[segmentIdx] ?? 0;
+          const b = markers[segmentIdx + 1] ?? duration;
+          targetTime = a + (b - a) * segmentLocal;
         };
 
-        const videoTween = gsap.to(proxy, {
-          t: 0.1,
-          ease: "none",
-          scrollTrigger: {
-            trigger: section,
-            start: "top top",
-            end: () => `+=${endDistance}`,
-            scrub: 0.6,
-            invalidateOnRefresh: true,
-          },
-          onUpdate: scheduleApply,
-        });
+        const sync = (): void => {
+          if (duration > 0) {
+            const diff = targetTime - video.currentTime;
 
-        const bindDuration = (): void => {
-          if (!Number.isFinite(video.duration) || video.duration <= 0) return;
-          videoTween.vars.t = Math.max(0, video.duration - 0.05);
-          videoTween.invalidate();
-          ScrollTrigger.refresh();
+            if (diff > 0.04) {
+              if (video.paused) {
+                const p = video.play();
+                if (p && typeof p.catch === "function") p.catch(() => undefined);
+              }
+            } else if (diff < -0.4) {
+              const now = performance.now();
+              if (now - lastSeekAt > 80) {
+                lastSeekAt = now;
+                const safe = Math.max(0, Math.min(duration - 0.05, targetTime));
+                try {
+                  if (typeof video.fastSeek === "function") {
+                    video.fastSeek(safe);
+                  } else {
+                    video.currentTime = safe;
+                  }
+                } catch {
+                  // ignore seek errors during transitions
+                }
+              }
+              if (!video.paused) video.pause();
+            } else if (diff <= 0.02 && !video.paused) {
+              video.pause();
+            }
+          }
+          rafId = window.requestAnimationFrame(sync);
         };
 
         const handleReady = (): void => {
-          bindDuration();
+          if (Number.isFinite(video.duration) && video.duration > 0) {
+            duration = video.duration;
+            updateTargetFromProgress();
+          }
         };
 
         if (video.readyState >= 3) {
           handleReady();
         } else {
           video.addEventListener("canplaythrough", handleReady, { once: true });
-          video.addEventListener("loadedmetadata", bindDuration, { once: true });
+          video.addEventListener("loadedmetadata", handleReady, { once: true });
         }
 
+        ScrollTrigger.create({
+          trigger: section,
+          start: "top top",
+          end: () => `+=${endDistance}`,
+          onUpdate: (self) => {
+            progress = self.progress;
+            updateTargetFromProgress();
+          },
+          onLeave: () => {
+            if (!video.paused) video.pause();
+          },
+          onLeaveBack: () => {
+            if (!video.paused) video.pause();
+          },
+          invalidateOnRefresh: true,
+        });
+
+        rafId = window.requestAnimationFrame(sync);
+
         cleanups.push(() => {
+          if (rafId !== 0) window.cancelAnimationFrame(rafId);
           video.removeEventListener("canplaythrough", handleReady);
-          video.removeEventListener("loadedmetadata", bindDuration);
-          if (pendingFrame !== 0) window.cancelAnimationFrame(pendingFrame);
+          video.removeEventListener("loadedmetadata", handleReady);
+          if (!video.paused) video.pause();
         });
       }
 
