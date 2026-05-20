@@ -11,38 +11,96 @@ const REEL_POSTER =
 
 export default function FeaturedReel(): React.JSX.Element {
   const sectionRef = useRef<HTMLElement | null>(null);
+  const frameRef = useRef<HTMLDivElement | null>(null);
   const mediaRef = useRef<HTMLDivElement | null>(null);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+  const captionRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const node = mediaRef.current;
-    if (!node) return;
 
     gsap.registerPlugin(ScrollTrigger);
 
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const section = sectionRef.current;
+    const frame = frameRef.current;
+    const media = mediaRef.current;
+    const overlay = overlayRef.current;
+    const caption = captionRef.current;
+    if (!section || !frame || !media) return;
+
     if (prefersReducedMotion) {
-      gsap.set(node, { scale: 1, opacity: 1 });
+      gsap.set(media, { yPercent: 0, scale: 1 });
+      if (overlay) gsap.set(overlay, { opacity: 0.3 });
       return;
     }
 
     const ctx = gsap.context(() => {
+      gsap.set(media, { yPercent: -15, scale: 1.05 });
+
+      gsap.to(media, {
+        yPercent: 15,
+        ease: "none",
+        scrollTrigger: {
+          trigger: section,
+          start: "top bottom",
+          end: "bottom top",
+          scrub: true,
+          invalidateOnRefresh: true,
+        },
+      });
+
       gsap.fromTo(
-        node,
-        { scale: 0.92, opacity: 0.6 },
+        frame,
+        { scale: 0.94, borderRadius: 48 },
         {
           scale: 1,
-          opacity: 1,
-          ease: "power2.out",
+          borderRadius: 24,
+          ease: "none",
           scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top 80%",
-            end: "top 30%",
-            scrub: 0.8,
+            trigger: section,
+            start: "top 85%",
+            end: "top 25%",
+            scrub: 0.6,
           },
         }
       );
-    }, sectionRef);
+
+      if (overlay) {
+        gsap.fromTo(
+          overlay,
+          { opacity: 0.55 },
+          {
+            opacity: 0.2,
+            ease: "none",
+            scrollTrigger: {
+              trigger: section,
+              start: "top 80%",
+              end: "bottom 30%",
+              scrub: true,
+            },
+          }
+        );
+      }
+
+      if (caption) {
+        gsap.fromTo(
+          caption,
+          { y: 40, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            ease: "power2.out",
+            scrollTrigger: {
+              trigger: section,
+              start: "top 70%",
+              end: "top 35%",
+              scrub: 0.8,
+            },
+          }
+        );
+      }
+    }, section);
 
     return () => ctx.revert();
   }, []);
@@ -60,19 +118,29 @@ export default function FeaturedReel(): React.JSX.Element {
 
       <div className="mx-auto w-full max-w-[1400px] px-6 md:px-12">
         <div
-          ref={mediaRef}
-          className="relative aspect-[16/9] w-full overflow-hidden rounded-3xl bg-ink/5"
+          ref={frameRef}
+          className="relative aspect-[16/9] w-full overflow-hidden rounded-3xl bg-ink/5 will-change-transform"
         >
-          <Image
-            src={REEL_POSTER}
-            alt="Odds — selected work reel poster"
-            fill
-            priority
-            sizes="(min-width: 1400px) 1400px, 100vw"
-            className="object-cover"
-          />
+          <div
+            ref={mediaRef}
+            className="absolute inset-x-0 -top-[15%] -bottom-[15%] will-change-transform"
+            style={{ height: "130%" }}
+          >
+            <Image
+              src={REEL_POSTER}
+              alt="Odds — selected work reel poster"
+              fill
+              priority
+              sizes="(min-width: 1400px) 1400px, 100vw"
+              className="object-cover"
+            />
+          </div>
 
-          <div className="absolute inset-0 bg-ink/30" aria-hidden="true" />
+          <div
+            ref={overlayRef}
+            className="absolute inset-0 bg-ink/40"
+            aria-hidden="true"
+          />
 
           <div className="absolute inset-0 flex items-center justify-center">
             <button
@@ -85,11 +153,18 @@ export default function FeaturedReel(): React.JSX.Element {
                 className="absolute inset-0 rounded-full transition-transform duration-500 group-hover:scale-110"
                 style={{ backgroundColor: "rgba(46,125,50,0.55)" }}
               />
+              <span
+                aria-hidden="true"
+                className="absolute -inset-3 rounded-full border border-white/30 opacity-60"
+              />
               <Play size={32} className="relative z-10 text-white" fill="white" />
             </button>
           </div>
 
-          <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between text-white md:bottom-10 md:left-10 md:right-10">
+          <div
+            ref={captionRef}
+            className="absolute bottom-6 left-6 right-6 flex items-end justify-between text-white md:bottom-10 md:left-10 md:right-10"
+          >
             <div>
               <div className="font-body text-[10px] uppercase tracking-[0.4em] opacity-70">
                 Brand film
