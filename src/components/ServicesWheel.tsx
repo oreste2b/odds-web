@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -11,6 +12,7 @@ type Service = {
   title: string;
   description: string;
   deliverables: ReadonlyArray<string>;
+  image: string;
 };
 
 const SERVICES: ReadonlyArray<Service> = [
@@ -22,6 +24,8 @@ const SERVICES: ReadonlyArray<Service> = [
     description:
       "Sharpen what you stand for, who you stand against and where you win. Research, narrative architecture and category design.",
     deliverables: ["Market & audience research", "Positioning narrative", "Naming & messaging"],
+    image:
+      "https://images.unsplash.com/photo-1551836022-deb4988cc6c0?auto=format&fit=crop&w=1200&q=80",
   },
   {
     id: "brand",
@@ -31,6 +35,8 @@ const SERVICES: ReadonlyArray<Service> = [
     description:
       "Identity systems built to scale across every surface. Logotypes, motion, sound, voice and the rules to keep them coherent.",
     deliverables: ["Visual identity", "Brand guidelines", "Motion & sound"],
+    image:
+      "https://images.unsplash.com/photo-1561070791-2526d30994b8?auto=format&fit=crop&w=1200&q=80",
   },
   {
     id: "product",
@@ -40,6 +46,8 @@ const SERVICES: ReadonlyArray<Service> = [
     description:
       "Web, app and platform design engineered for clarity, speed and conversion. Built with engineering, not handed off to it.",
     deliverables: ["UX architecture", "UI design systems", "Front-end build"],
+    image:
+      "https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?auto=format&fit=crop&w=1200&q=80",
   },
   {
     id: "content",
@@ -49,6 +57,8 @@ const SERVICES: ReadonlyArray<Service> = [
     description:
       "Editorial, film and social systems that compound brand equity instead of burning through ad budget every quarter.",
     deliverables: ["Editorial direction", "Film & photography", "Social systems"],
+    image:
+      "https://images.unsplash.com/photo-1500917293891-ef795e70e1f6?auto=format&fit=crop&w=1200&q=80",
   },
   {
     id: "growth",
@@ -58,6 +68,8 @@ const SERVICES: ReadonlyArray<Service> = [
     description:
       "Paid, organic and lifecycle engineered as one funnel. Measurement that exposes what's actually working — not what looks good in a deck.",
     deliverables: ["Paid media", "SEO & lifecycle", "Measurement stack"],
+    image:
+      "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80",
   },
   {
     id: "ai",
@@ -67,6 +79,8 @@ const SERVICES: ReadonlyArray<Service> = [
     description:
       "Custom agents, internal tools and ops automation that compress the distance between idea and execution.",
     deliverables: ["Internal tools", "AI agents", "Workflow automation"],
+    image:
+      "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=80",
   },
 ];
 
@@ -78,6 +92,7 @@ export default function ServicesWheel(): React.JSX.Element {
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   const descRef = useRef<HTMLParagraphElement | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
+  const mediaRef = useRef<HTMLDivElement | null>(null);
   const [active, setActive] = useState<number>(0);
 
   useEffect(() => {
@@ -136,6 +151,7 @@ export default function ServicesWheel(): React.JSX.Element {
       titleRef.current,
       descRef.current,
       listRef.current,
+      mediaRef.current,
     ];
 
     targets.forEach((node) => {
@@ -184,11 +200,35 @@ export default function ServicesWheel(): React.JSX.Element {
               className="md:sticky md:top-28"
             >
               <div
-                ref={indexBigRef}
-                className="font-display select-none text-[18vw] leading-[0.85] text-ink/90 md:text-[10vw]"
-                style={{ letterSpacing: "-0.06em" }}
+                ref={mediaRef}
+                className="relative aspect-[4/5] w-full max-w-[340px] overflow-hidden rounded-2xl bg-ink/5"
               >
-                {activeService.index}
+                <Image
+                  key={activeService.id}
+                  src={activeService.image}
+                  alt={`${activeService.title} — placeholder visual`}
+                  fill
+                  sizes="(min-width: 768px) 340px, 80vw"
+                  className="object-cover"
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(17,19,21,0) 30%, rgba(17,19,21,0.55) 100%)",
+                  }}
+                  aria-hidden="true"
+                />
+                <div
+                  ref={indexBigRef}
+                  className="font-display absolute bottom-4 left-5 text-6xl leading-[0.85] text-white md:text-7xl"
+                  style={{ letterSpacing: "-0.06em" }}
+                >
+                  {activeService.index}
+                </div>
+                <div className="absolute right-4 top-4 rounded-full border border-white/40 bg-black/30 px-2.5 py-1 text-[9px] uppercase tracking-[0.3em] text-white backdrop-blur-sm">
+                  Image placeholder
+                </div>
               </div>
 
               <div className="mt-6 h-px w-24" style={{ backgroundColor: "var(--color-primary-accent)" }} />

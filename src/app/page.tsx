@@ -1,4 +1,5 @@
 import Hero from "@/components/Hero";
+import FeaturedReel from "@/components/FeaturedReel";
 import PillarsStrip from "@/components/PillarsStrip";
 import Manifesto from "@/components/Manifesto";
 import ServicesWheel from "@/components/ServicesWheel";
@@ -11,6 +12,7 @@ export default function Home(): React.JSX.Element {
   return (
     <main className="relative w-full bg-surfaceTint">
       <Hero />
+      <FeaturedReel />
       <PillarsStrip />
       <Manifesto />
       <ServicesWheel />
