@@ -36,7 +36,7 @@ const SERVICES: ReadonlyArray<Service> = [
       "Identity systems built to scale across every surface. Logotypes, motion, sound, voice and the rules to keep them coherent.",
     deliverables: ["Visual identity", "Brand guidelines", "Motion & sound"],
     image:
-      "https://images.unsplash.com/photo-1561070791-2526d30994b8?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?auto=format&fit=crop&w=1200&q=80",
   },
   {
     id: "product",
